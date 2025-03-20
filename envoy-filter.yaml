@@ -1,0 +1,29 @@
+# add-header-filter.yaml
+apiVersion: networking.istio.io/v1alpha3
+kind: EnvoyFilter
+metadata:
+  name: header-injection
+  namespace: header-demo
+spec:
+  workloadSelector:
+    labels:
+      app: frontend
+  configPatches:
+  - applyTo: HTTP_FILTER
+    match:
+      context: SIDECAR_OUTBOUND
+      listener:
+        filterChain:
+          filter:
+            name: "envoy.filters.network.http_connection_manager"
+    patch:
+      operation: INSERT_BEFORE
+      value:
+        name: envoy.lua
+        typed_config:
+          "@type": "type.googleapis.com/envoy.extensions.filters.http.lua.v3.Lua"
+          inlineCode: |
+            function envoy_on_request(request_handle)
+              request_handle:headers():add("x-custom-header", "injected-by-envoyfilter")
+              request_handle:headers():add("x-request-time", os.date("%Y-%m-%dT%H:%M:%S"))
+            end

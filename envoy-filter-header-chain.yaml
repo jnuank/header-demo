@@ -1,0 +1,41 @@
+apiVersion: networking.istio.io/v1alpha3
+kind: EnvoyFilter
+metadata:
+  name: header-propagation-filter
+spec:
+  workloadSelector:
+    labels:
+      app: bff  # BFFサービスに適用
+  configPatches:
+    - applyTo: HTTP_FILTER
+      match:
+        context: SIDECAR_INBOUND
+        listener:
+          filterChain:
+            filter:
+              name: "envoy.filters.network.http_connection_manager"
+      patch:
+        operation: INSERT_BEFORE
+        value:
+          name: envoy.lua
+          typed_config:
+            "@type": "type.googleapis.com/envoy.extensions.filters.http.lua.v3.Lua"
+            inlineCode: |
+              function envoy_on_request(request_handle)
+                -- カスタムヘッダーを取得
+                local custom_header = request_handle:headers():get("x-test")
+                if custom_header then
+                  -- ヘッダーをコンテキストに保存
+                  request_handle:streamInfo():dynamicMetadata():set("custom_metadata", "header_value", custom_header)
+                  request_handle:headers():add("x-chain", custom_header)
+                end
+              end
+
+              function envoy_on_response(response_handle)
+                -- 保存したヘッダー値を取得
+                local header_value = response_handle:streamInfo():dynamicMetadata():get("custom_metadata")["header_value"]
+                if header_value then
+                  -- backendへのリクエストにヘッダーを追加
+                  response_handle:headers():add("x-chain", header_value)
+                end
+              end
