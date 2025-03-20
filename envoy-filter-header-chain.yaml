@@ -22,16 +22,16 @@ spec:
             "@type": "type.googleapis.com/envoy.extensions.filters.http.lua.v3.Lua"
             inlineCode: |
               function envoy_on_request(request_handle)
-                -- カスタムヘッダーを取得
-                local custom_header = request_handle:headers():get("x-test")
-                if custom_header then
-                  -- ヘッダーをコンテキストに保存
-                  request_handle:streamInfo():dynamicMetadata():set("custom_metadata", "header_value", custom_header)
-                  request_handle:headers():add("x-chain", custom_header)
+                local option = request_handle:headers():get("x-option")
+                if option == "1000" then
+                  request_handle:streamInfo():dynamicMetadata():set("custom_metadata", "header_value", option)
+                  request_handle:headers():add("x-beta-function", "true")
                 end
               end
 
               function envoy_on_response(response_handle)
+                -- このあたりはいらないかも
+
                 -- 保存したヘッダー値を取得
                 local header_value = response_handle:streamInfo():dynamicMetadata():get("custom_metadata")["header_value"]
                 if header_value then
